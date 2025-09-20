@@ -71,21 +71,44 @@ class ZoneDetector(private val imageWidth: Int, private val imageHeight: Int) {
         var passengerDetected = false
         var exchangeDetected = false
 
+        android.util.Log.d("ZoneDetector", "=== EVALUANDO ${detections.size} DETECCIONES ===")
+        android.util.Log.d("ZoneDetector", "Imagen: ${imageWidth}x${imageHeight}")
+        android.util.Log.d("ZoneDetector", "Zona Conductor: ${driverZone.rect}")
+        android.util.Log.d("ZoneDetector", "Zona Pasajero: ${passengerZone.rect}")
+        android.util.Log.d("ZoneDetector", "Zona Intercambio: ${exchangeZone.rect}")
+
         for (detection in detections) {
-            // Solo procesar personas con confianza > 50%
-            if (detection.classId == 0 && detection.confidence > 0.5f) {
+            android.util.Log.d("ZoneDetector", "Detección: ${detection.className}, confianza: ${detection.confidence}, bbox: ${detection.boundingBox}")
+
+            // Solo procesar personas con confianza > 30% (reducido para debug)
+            if (detection.classId == 0 && detection.confidence > 0.3f) {
                 val bbox = detection.boundingBox
-                if (Rect.intersects(bbox, driverZone.rect)) {
+
+                val intersectsConductor = Rect.intersects(bbox, driverZone.rect)
+                val intersectsPasajero = Rect.intersects(bbox, passengerZone.rect)
+                val intersectsIntercambio = Rect.intersects(bbox, exchangeZone.rect)
+
+                android.util.Log.d("ZoneDetector", "  - Intersecciones: Conductor=$intersectsConductor, Pasajero=$intersectsPasajero, Intercambio=$intersectsIntercambio")
+
+                if (intersectsConductor) {
                     conductorDetected = true
+                    android.util.Log.d("ZoneDetector", "  ✓ CONDUCTOR DETECTADO!")
                 }
-                if (Rect.intersects(bbox, passengerZone.rect)) {
+                if (intersectsPasajero) {
                     passengerDetected = true
+                    android.util.Log.d("ZoneDetector", "  ✓ PASAJERO DETECTADO!")
                 }
-                if (Rect.intersects(bbox, exchangeZone.rect)) {
+                if (intersectsIntercambio) {
                     exchangeDetected = true
+                    android.util.Log.d("ZoneDetector", "  ✓ INTERCAMBIO DETECTADO!")
                 }
+            } else {
+                android.util.Log.d("ZoneDetector", "  - Ignorada: no es persona o confianza muy baja")
             }
         }
+
+        android.util.Log.d("ZoneDetector", "=== RESULTADO FINAL ===")
+        android.util.Log.d("ZoneDetector", "Conductor: $conductorDetected, Pasajero: $passengerDetected, Intercambio: $exchangeDetected")
 
         return ZoneResult(conductorDetected, passengerDetected, exchangeDetected)
     }

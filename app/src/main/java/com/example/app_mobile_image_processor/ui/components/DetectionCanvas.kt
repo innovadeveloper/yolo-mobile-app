@@ -64,7 +64,7 @@ private fun DrawScope.drawZone(
         color = zone.color.copy(alpha = 0.3f),
         topLeft = scaledRect.topLeft,
         size = scaledRect.size,
-        style = androidx.compose.ui.graphics.drawscope.Stroke(width = 3.dp.toPx())
+        style = androidx.compose.ui.graphics.drawscope.Stroke(width = 6.dp.toPx())
     )
 
     // Dibujar etiqueta de zona
@@ -103,7 +103,7 @@ private fun DrawScope.drawDetection(
         color = Color.Red,
         topLeft = scaledRect.topLeft,
         size = scaledRect.size,
-        style = androidx.compose.ui.graphics.drawscope.Stroke(width = 4.dp.toPx())
+        style = androidx.compose.ui.graphics.drawscope.Stroke(width = 8.dp.toPx())
     )
 
     // Dibujar confianza
