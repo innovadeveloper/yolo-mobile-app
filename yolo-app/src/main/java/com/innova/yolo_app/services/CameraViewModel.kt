@@ -12,7 +12,8 @@ data class CameraState(
     val bitmap: Bitmap? = null,
     val detections: List<Detection> = emptyList(),
     val isProcessing: Boolean = false,
-    val processingTime: Long = 0L
+    val processingTime: Long = 0L,
+    val isShowingCapturedImage: Boolean = false
 )
 
 class CameraViewModel : ViewModel() {
@@ -38,9 +39,18 @@ class CameraViewModel : ViewModel() {
                 bitmap = bitmap,
                 detections = detections,
                 isProcessing = false,
-                processingTime = processingTime
+                processingTime = processingTime,
+                isShowingCapturedImage = true
             )
         }
+    }
+
+    fun returnToLiveCamera() {
+        _state.value = _state.value.copy(
+            isShowingCapturedImage = false,
+            detections = emptyList(),
+            bitmap = null
+        )
     }
 
     override fun onCleared() {

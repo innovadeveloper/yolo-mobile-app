@@ -82,28 +82,40 @@ fun CameraContent(viewModel: CameraViewModel) {
     var previewView: PreviewView? by remember { mutableStateOf(null) }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // Vista previa de la cámara
+        // Vista previa de la cámara o imagen capturada
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
         ) {
-            AndroidView(
-                factory = { ctx ->
-                    PreviewView(ctx).also { preview ->
-                        previewView = preview
-                        startCamera(ctx, lifecycleOwner, preview, viewModel)
-                    }
-                },
-                modifier = Modifier.fillMaxSize()
-            )
+            if (state.isShowingCapturedImage && state.bitmap != null) {
+                // Mostrar imagen capturada con detecciones
+                state?.bitmap?.asImageBitmap()?.let {
+                    Image(
+                        bitmap = it,
+                        contentDescription = "Imagen capturada",
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
 
-            // Overlay de detecciones
-            DetectionOverlay(
-                detections = state.detections,
-                bitmap = state.bitmap,
-                modifier = Modifier.fillMaxSize()
-            )
+                // Overlay de detecciones sobre la imagen capturada
+                DetectionOverlay(
+                    detections = state.detections,
+                    bitmap = state.bitmap,
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                // Mostrar cámara en vivo
+                AndroidView(
+                    factory = { ctx ->
+                        PreviewView(ctx).also { preview ->
+                            previewView = preview
+                            startCamera(ctx, lifecycleOwner, preview, viewModel)
+                        }
+                    },
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
 
             if (state.isProcessing) {
                 Box(
@@ -118,21 +130,28 @@ fun CameraContent(viewModel: CameraViewModel) {
         // Panel de información
         DetectionInfoPanel(state = state)
 
-        // Botón de captura
+        // Botón de captura/activar cámara
         Box(
             modifier = Modifier.fillMaxWidth(),
             contentAlignment = Alignment.Center
         ) {
             Button(
                 onClick = {
-                    previewView?.let { preview ->
-                        captureImage(preview, viewModel)
+                    if (state.isShowingCapturedImage) {
+                        viewModel.returnToLiveCamera()
+                    } else {
+                        previewView?.let { preview ->
+                            captureImage(preview, viewModel)
+                        }
                     }
                 },
                 modifier = Modifier.padding(16.dp),
                 enabled = !state.isProcessing
             ) {
-                Text("Capturar y Detectar")
+                Text(
+                    if (state.isShowingCapturedImage) "Activar Cámara"
+                    else "Capturar y Detectar"
+                )
             }
         }
     }
@@ -167,8 +186,8 @@ fun DetectionInfoPanel(state: CameraState) {
                 LazyColumn(
                     modifier = Modifier.height(120.dp)
                 ) {
-                    items(state.detections.take(3)) { detection ->
-                        DetectionItem(detection = detection)
+                    items(state.detections.take(3).withIndex().toList()) { (index, detection) ->
+                        DetectionItem(detection = detection, personNumber = index + 1)
                     }
                 }
             }
@@ -177,7 +196,7 @@ fun DetectionInfoPanel(state: CameraState) {
 }
 
 @Composable
-fun DetectionItem(detection: Detection) {
+fun DetectionItem(detection: Detection, personNumber: Int) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -187,7 +206,7 @@ fun DetectionItem(detection: Detection) {
             modifier = Modifier.padding(8.dp)
         ) {
             Text(
-                text = "Persona - Confianza: ${String.format("%.2f", detection.confidence)}",
+                text = "Persona $personNumber - Confianza: ${String.format("%.2f", detection.confidence)}",
                 style = MaterialTheme.typography.bodyMedium
             )
             Text(
@@ -244,7 +263,7 @@ fun DetectionOverlay(
         val scaleX = canvasWidth / bitmap.width
         val scaleY = canvasHeight / bitmap.height
 
-        detections.forEach { detection ->
+        detections.forEachIndexed { index, detection ->
             // Escalar las coordenadas del bounding box al tamaño del canvas
             val scaledLeft = detection.bbox.left * scaleX
             val scaledTop = detection.bbox.top * scaleY
@@ -262,9 +281,10 @@ fun DetectionOverlay(
                 style = Stroke(width = 3.dp.toPx())
             )
 
-            // Dibujar etiqueta con confianza
-            val label = "Person: ${String.format("%.2f", detection.confidence)}"
-            val textSize = 14.sp.toPx()
+            // Dibujar etiqueta con numeración y confianza
+            val personNumber = index + 1
+            val label = "Persona $personNumber: ${String.format("%.2f", detection.confidence)}"
+            var textSize = 14.sp.toPx()
 
             // Fondo para el texto
             val textWidth = label.length * textSize * 0.6f
@@ -273,14 +293,14 @@ fun DetectionOverlay(
             drawRect(
                 color = Color.Green,
                 topLeft = Offset(scaledLeft, scaledTop - textHeight),
-                size = Size(textWidth, textHeight)
+                size = Size(textWidth, textSize)
             )
 
             // Texto
             drawIntoCanvas { canvas ->
                 val paint = Paint().asFrameworkPaint().apply {
                     color = android.graphics.Color.WHITE
-//                    textSize = 14.sp.toPx()
+                    textSize = 40.sp.toPx()
                     isAntiAlias = true
                 }
 
