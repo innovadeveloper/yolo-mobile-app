@@ -284,30 +284,39 @@ fun DetectionOverlay(
             // Dibujar etiqueta con numeración y confianza
             val personNumber = index + 1
             val label = "Persona $personNumber: ${String.format("%.2f", detection.confidence)}"
-            var textSize = 14.sp.toPx()
+            val textSizeSp = 16.sp.toPx() // Aumentado de 14sp a 18sp
 
-            // Fondo para el texto
-            val textWidth = label.length * textSize * 0.6f
-            val textHeight = textSize * 1.2f
+            // Fondo para el texto con más altura y ancho
+            val textWidth = label.length * textSizeSp * 0.7f
+            val textHeight = textSizeSp * 1.5f
+
+            // Fondo con borde negro para mayor contraste
+            drawRect(
+                color = Color.Black,
+                topLeft = Offset(scaledLeft - 2f, scaledTop - textHeight - 2f),
+                size = Size(textWidth + 4f, textHeight + 4f)
+            )
 
             drawRect(
                 color = Color.Green,
                 topLeft = Offset(scaledLeft, scaledTop - textHeight),
-                size = Size(textWidth, textSize)
+                size = Size(textWidth, textHeight)
             )
 
-            // Texto
+            // Texto más grande y con mejor contraste
             drawIntoCanvas { canvas ->
                 val paint = Paint().asFrameworkPaint().apply {
                     color = android.graphics.Color.WHITE
-                    textSize = 40.sp.toPx()
+                    textSize = textSizeSp
                     isAntiAlias = true
+                    isFakeBoldText = true // Hacer el texto en negrita
+                    setShadowLayer(2f, 1f, 1f, android.graphics.Color.BLACK) // Sombra para mejor legibilidad
                 }
 
                 canvas.nativeCanvas.drawText(
                     label,
-                    scaledLeft,
-                    scaledTop - textHeight * 0.2f,
+                    scaledLeft + 4f, // Pequeño padding
+                    scaledTop - textHeight * 0.3f,
                     paint
                 )
             }
