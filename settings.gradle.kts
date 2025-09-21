@@ -21,4 +21,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "app-mobile-image-processor"
 include(":app")
- 
+include(":yolo-app")
