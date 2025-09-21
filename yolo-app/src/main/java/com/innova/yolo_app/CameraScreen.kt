@@ -8,6 +8,7 @@ import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -15,10 +16,17 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -87,6 +95,13 @@ fun CameraContent(viewModel: CameraViewModel) {
                         startCamera(ctx, lifecycleOwner, preview, viewModel)
                     }
                 },
+                modifier = Modifier.fillMaxSize()
+            )
+
+            // Overlay de detecciones
+            DetectionOverlay(
+                detections = state.detections,
+                bitmap = state.bitmap,
                 modifier = Modifier.fillMaxSize()
             )
 
@@ -211,6 +226,73 @@ private fun startCamera(
             println("Error iniciando cámara: ${exc.message}")
         }
     }, ContextCompat.getMainExecutor(context))
+}
+
+@Composable
+fun DetectionOverlay(
+    detections: List<Detection>,
+    bitmap: Bitmap?,
+    modifier: Modifier = Modifier
+) {
+    if (detections.isEmpty() || bitmap == null) return
+
+    Canvas(modifier = modifier) {
+        val canvasWidth = size.width
+        val canvasHeight = size.height
+
+        // Calcular factores de escala entre el bitmap original y el canvas
+        val scaleX = canvasWidth / bitmap.width
+        val scaleY = canvasHeight / bitmap.height
+
+        detections.forEach { detection ->
+            // Escalar las coordenadas del bounding box al tamaño del canvas
+            val scaledLeft = detection.bbox.left * scaleX
+            val scaledTop = detection.bbox.top * scaleY
+            val scaledRight = detection.bbox.right * scaleX
+            val scaledBottom = detection.bbox.bottom * scaleY
+
+            // Dibujar rectángulo
+            drawRect(
+                color = Color.Green,
+                topLeft = Offset(scaledLeft, scaledTop),
+                size = Size(
+                    scaledRight - scaledLeft,
+                    scaledBottom - scaledTop
+                ),
+                style = Stroke(width = 3.dp.toPx())
+            )
+
+            // Dibujar etiqueta con confianza
+            val label = "Person: ${String.format("%.2f", detection.confidence)}"
+            val textSize = 14.sp.toPx()
+
+            // Fondo para el texto
+            val textWidth = label.length * textSize * 0.6f
+            val textHeight = textSize * 1.2f
+
+            drawRect(
+                color = Color.Green,
+                topLeft = Offset(scaledLeft, scaledTop - textHeight),
+                size = Size(textWidth, textHeight)
+            )
+
+            // Texto
+            drawIntoCanvas { canvas ->
+                val paint = Paint().asFrameworkPaint().apply {
+                    color = android.graphics.Color.WHITE
+//                    textSize = 14.sp.toPx()
+                    isAntiAlias = true
+                }
+
+                canvas.nativeCanvas.drawText(
+                    label,
+                    scaledLeft,
+                    scaledTop - textHeight * 0.2f,
+                    paint
+                )
+            }
+        }
+    }
 }
 
 private fun captureImage(previewView: PreviewView, viewModel: CameraViewModel) {
